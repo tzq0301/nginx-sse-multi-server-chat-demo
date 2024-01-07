@@ -24,3 +24,32 @@ NATS's built-in Pub/Sub mechanism provides an instant-data-propagation way for S
 ## Architecture
 
 ![](doc/architecture.png)
+
+## How to run?
+
+### Server
+
+```shell
+docker compose up --build
+```
+
+### Client (Subscribe)
+
+```shell
+cd client
+npm install
+node index.js
+```
+
+### Client (Send Message)
+
+```
+POST 127.0.0.1/send
+Content-Type: application/json
+
+{
+  "groupId": "1234",
+  "sender": "Tony",
+  "content": "hello~"
+}
+```
