@@ -1,0 +1,19 @@
+services:
+  web:
+    build: server
+    depends_on:
+      - nats
+    deploy:
+      mode: replicated
+      replicas: 2
+      endpoint_mode: vip
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - web
+  nats:
+    image: 'nats:latest'
