@@ -5,15 +5,15 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/nats-io/nats.go"
 )
 
 type Message struct {
+	GroupID  string `json:"groupId"`
 	SenderID string `json:"senderId"`
-	Content  string `json:"message"`
+	Content  string `json:"content"`
 }
 
 func main() {
@@ -24,9 +24,25 @@ func main() {
 		panic(err)
 	}
 
-	slog.InfoContext(ctx, "setup NATS server", slog.Bool("isConnected", nc.IsConnected()))
+	slog.InfoContext(ctx, "connect to NATS server", slog.Bool("isConnected", nc.IsConnected()))
 
 	r := chi.NewRouter()
+
+	r.Post("/send", func(w http.ResponseWriter, r *http.Request) {
+		var message Message
+		if err := json.NewDecoder(r.Body).Decode(&message); err != nil {
+			panic(err)
+		}
+
+		bytes, err := json.Marshal(message)
+		if err != nil {
+			panic(err)
+		}
+
+		if err := nc.Publish(message.GroupID, bytes); err != nil {
+			panic(err)
+		}
+	})
 
 	r.Get("/group/{groupID}", func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -37,16 +53,32 @@ func main() {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 
+		messages := make(chan Message)
+
+		subscribe, err := nc.Subscribe(groupID, func(msg *nats.Msg) {
+			var message Message
+			if err := json.Unmarshal(msg.Data, &message); err != nil {
+				panic(err)
+			}
+			messages <- message
+		})
+		if err != nil {
+			panic(err)
+		}
+		defer func(subscribe *nats.Subscription) {
+			err := subscribe.Unsubscribe()
+			if err != nil {
+				panic(err)
+			}
+		}(subscribe)
+
 		for {
 			select {
-			case <-time.After(1 * time.Second):
+			case msg := <-messages:
 				if _, err := w.Write([]byte("data: ")); err != nil {
 					panic(err)
 				}
-				if err := json.NewEncoder(w).Encode(&Message{
-					Content:  "Hello",
-					SenderID: "World",
-				}); err != nil {
+				if err := json.NewEncoder(w).Encode(&msg); err != nil {
 					panic(err)
 				}
 				if _, err := w.Write([]byte("\n\n")); err != nil {
