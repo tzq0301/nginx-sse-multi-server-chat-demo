@@ -11,9 +11,9 @@ import (
 )
 
 type Message struct {
-	GroupID  string `json:"groupId"`
-	SenderID string `json:"senderId"`
-	Content  string `json:"content"`
+	GroupID string `json:"groupId"`
+	Sender  string `json:"sender"`
+	Content string `json:"content"`
 }
 
 func main() {

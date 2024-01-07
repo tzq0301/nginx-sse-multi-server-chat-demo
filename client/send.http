@@ -3,6 +3,6 @@ Content-Type: application/json
 
 {
   "groupId": "1234",
-  "senderId": "Tony",
+  "sender": "Tony",
   "content": "hello~"
 }
